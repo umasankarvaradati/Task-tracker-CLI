@@ -1,0 +1,167 @@
+import argparse
+import json
+import os
+import datetime
+
+TASKS_FILE = "Tasks.json"
+
+
+def load_tasks():
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "r") as file:
+            try:
+                tasks = json.load(file)
+            except json.JSONDecodeError:
+                tasks = []  # if file is empty or invalid
+    else:
+        tasks = []
+    return tasks
+
+
+def save_tasks(tasks):
+    with open(TASKS_FILE, 'w') as file:
+        json.dump(tasks, file, indent=4)
+
+
+def add_task(args):
+    tasks = load_tasks()
+    if not tasks:
+        task_id = 0
+    else:
+        task_id = tasks[-1]['Id'] + 1
+
+    task = {
+        "Id": task_id,
+        "Task": str(args.task),
+        "Status": "Todo",
+        "CreatedAt": datetime.datetime.now().strftime("%d-%m-%y, %H:%M:%S"),
+        "UpdatedAt": False
+    }
+    tasks.append(task)
+    save_tasks(tasks)
+    print(f"Task added successfully (ID: {task_id})")
+
+
+def update_task(args):
+    tasks = load_tasks()
+    task_id = args.id
+    found = False
+    for x in range(len(tasks)):
+        if tasks[x]["Id"] == task_id:
+            found = True
+            break
+    if not found:
+        print(f"There is no task with the given id {task_id}...!")
+        return
+    tasks[x]["Task"] = args.task
+    tasks[x]["UpdatedAt"] = datetime.datetime.now().strftime("%d-%m-%y, %H:%M:%S")
+    save_tasks(tasks)
+    print("Task updated!")
+
+
+def list_tasks(args):
+    try:
+        tasks = load_tasks()
+        status = args.status.title()
+        if tasks:
+            filtered_tasks = []
+            if status == "All":
+                filtered_tasks = tasks
+            elif status in {"Done", "Todo", "In-Progress"}:
+                for task in tasks:
+                    if task["Status"] == status:
+                        filtered_tasks.append(task)
+            else:
+                print(f'"{status}" is not the correct status. Provide the correct status...!')
+                return
+            if filtered_tasks:
+                print("Here are your tasks:")
+                print("ID   Task                   Status         Created At            Updated At")
+                for task in filtered_tasks:
+                    print(f"{task['Id']}    {task['Task']}        {task['Status']}   {task['CreatedAt']}      {task['UpdatedAt']}")
+            else:
+                print(f"No Task Found with the status '{status}' ...!")
+        else:
+            print("No Task Found...!")
+    except Exception as e:
+        print(e)
+
+
+def delete_task(args):
+    task_id = args.id
+    tasks = load_tasks()
+    if not tasks:
+        print("There is no task to delete...!")
+        return
+    found = False
+    for x in range(len(tasks)):
+        if tasks[x]['Id'] == task_id:
+            found = True
+            break
+    if not found:
+        print(f"There is no task with the given id {task_id}...!")
+        return
+    del tasks[x]
+    save_tasks(tasks)
+    print("Task deleted successfully...!")
+
+
+def mark_in_progress(args):
+    task_id = args.id
+    tasks = load_tasks()
+    for task in tasks:
+        if task['Id'] == task_id:
+            task['Status'] = 'In-Progress'
+            task['UpdatedAt'] = datetime.datetime.now().strftime("%d-%m-%y, %H:%M:%S")
+            save_tasks(tasks)
+            print(f"Task {task_id} marked as In-Progress")
+            return
+    print(f"No task found with ID {task_id}")
+
+
+def mark_done(args):
+    task_id = args.id
+    tasks = load_tasks()
+    for task in tasks:
+        if task['Id'] == task_id:
+            task['Status'] = 'Done'
+            task['UpdatedAt'] = datetime.datetime.now().strftime("%d-%m-%y, %H:%M:%S")
+            save_tasks(tasks)
+            print(f"Task {task_id} marked as Done")
+            return
+    print(f"No task found with ID {task_id}")
+
+
+parser = argparse.ArgumentParser(prog="task-cli", description='This is a Command Line Task Tracker Application')
+subs = parser.add_subparsers()
+
+p_add = subs.add_parser("add", help="Add a new task")
+p_add.add_argument("task", type=str, help="The description of the task to add")
+p_add.set_defaults(func=add_task)
+
+p_update = subs.add_parser("update", help="Update an existing task")
+p_update.add_argument("id", type=int, help="The ID of the task to update")
+p_update.add_argument("task", type=str, help="The new description for the task")
+p_update.set_defaults(func=update_task)
+
+p_list = subs.add_parser("list", help="List tasks filtered by status")
+p_list.add_argument("status", type=str, nargs='?', default='all', help="Status filter: all, todo, in-progress, done")
+p_list.set_defaults(func=list_tasks)
+
+p_del = subs.add_parser("delete", help="Delete a task")
+p_del.add_argument("id", type=int, help="The ID of the task to delete")
+p_del.set_defaults(func=delete_task)
+
+p_mark_in_progress = subs.add_parser("mark-in-progress", help="Mark a task as In-Progress")
+p_mark_in_progress.add_argument("id", type=int, help="The ID of the task to mark as In-Progress")
+p_mark_in_progress.set_defaults(func=mark_in_progress)
+
+p_mark_done = subs.add_parser("mark-done", help="Mark a task as Done")
+p_mark_done.add_argument("id", type=int, help="The ID of the task to mark as Done")
+p_mark_done.set_defaults(func=mark_done)
+
+args = parser.parse_args()
+if hasattr(args, "func"):
+    args.func(args)
+else:
+    parser.print_help()
