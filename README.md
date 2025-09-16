@@ -3,6 +3,8 @@
 ## Description
 A simple command-line application to manage your tasks. Track tasks with statuses like Todo, In-Progress, and Done. Tasks are stored locally in a JSON file.
 
+This project is based on the [Task Tracker](https://roadmap.sh/projects/task-tracker) challenge from roadmap.sh.
+
 ## Features
 - Add new tasks
 - Update existing tasks
